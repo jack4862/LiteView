@@ -21,7 +21,16 @@ LiteView 是一个本地优先、只读的 Windows 10/11 x64 桌面图片查看�
 - 显示原始/显示尺寸、文件大小、解码耗时、颜色状态和常见 EXIF 元数据。
 - 可在“设置”中选择 English 或简体中文；默认跟随系统语言。
 
-## 安装
+## 使用
+
+Windows：下载
+[`LiteView-Setup.exe`](https://github.com/jack4862/LiteView/releases/latest/download/LiteView-Setup.exe)
+安装，然后从开始菜单打开 LiteView。安装器未签名，SmartScreen 可能提示“更多信息”和“仍要运行”。
+
+核对下载的包（可选）：在 Release 页面查看 `SHA256SUMS.txt`，本地运行
+`certutil -hashfile LiteView-Setup.exe SHA256` 后对比。
+
+## 从源码安装
 
 先构建发布包。发布步骤会生成 `dist\LiteView-Setup.exe`，双击它即可按当前用户安装。传统的脚本
 安装方式仍可在仓库根目录使用：

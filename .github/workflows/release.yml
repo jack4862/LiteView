@@ -1,0 +1,90 @@
+name: Windows Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust GNU toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install stable-x86_64-pc-windows-gnu --profile minimal --component rustfmt clippy --target x86_64-pc-windows-gnu
+          rustup default stable-x86_64-pc-windows-gnu
+          rustup component add rustfmt clippy
+          rustc -vV
+
+      - name: Install MinGW-w64
+        uses: msys2/setup-msys2@v2
+        id: msys2
+        with:
+          msystem: MINGW64
+          update: false
+          install: mingw-w64-x86_64-gcc
+          suppress-deprecation-warnings: msystem-mingw64
+
+      - name: Add MinGW to PATH
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $mingwBin = Join-Path $env:MSYS2_LOCATION 'mingw64\bin'
+          Add-Content -Path $env:GITHUB_PATH -Value $mingwBin
+          Add-Content -Path $env:GITHUB_ENV -Value "MINGW_BIN=$mingwBin"
+          & (Join-Path $mingwBin 'gcc.exe') --version
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        shell: pwsh
+        run: cargo fmt --all -- --check
+
+      - name: Check Clippy
+        shell: pwsh
+        run: cargo clippy --all-targets --all-features --release -- -D warnings
+
+      - name: Run tests
+        shell: pwsh
+        run: cargo test --all-targets -j 1
+
+      - name: Build release package
+        shell: pwsh
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\packaging\build-release.ps1 -MinGWPath $env:MINGW_BIN
+
+      - name: Verify release package
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath .\dist\LiteView\liteview.exe -PathType Leaf)) {
+              throw 'dist\LiteView\liteview.exe was not created.'
+          }
+          if (-not (Test-Path -LiteralPath .\dist\LiteView-Setup.exe -PathType Leaf)) {
+              throw 'dist\LiteView-Setup.exe was not created.'
+          }
+
+      - name: Prepare release assets
+        shell: pwsh
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\packaging\prepare-release-assets.ps1
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/LiteView-Setup.exe
+            dist/LiteView-windows-x64.zip
+            dist/SHA256SUMS.txt

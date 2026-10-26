@@ -24,7 +24,16 @@ installation. Optional formats, HDR, editing, cloud services, and AI are intenti
 - Show source/display dimensions, file size, decode time, color status, and common EXIF metadata.
 - Choose English or Simplified Chinese from Settings. By default, the UI follows the system language.
 
-## Install
+## Download
+
+Windows: download [`LiteView-Setup.exe`](https://github.com/jack4862/LiteView/releases/latest/download/LiteView-Setup.exe)
+and run it to install for the current user, then open LiteView from the Start menu. The installer is
+unsigned, so SmartScreen may ask you to choose **More info** and **Run anyway**.
+
+To verify a downloaded file, compare the SHA256 value in `SHA256SUMS.txt` on the Release page with
+`certutil -hashfile LiteView-Setup.exe SHA256`.
+
+## Install From Source
 
 Build the package first. The release step creates `dist\LiteView-Setup.exe`; double-click it to
 install for the current user. The traditional script remains available from the repository root:
