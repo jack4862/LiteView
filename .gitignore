@@ -1,0 +1,19 @@
+/target
+/dist
+/.claude
+/.idea
+/.vscode
+
+# Local secrets and generated reports
+.env
+.env.*
+!.env.example
+coverage/
+docs/benchmarks/benchmark-results.json
+docs/benchmarks/benchmark-results.md
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log

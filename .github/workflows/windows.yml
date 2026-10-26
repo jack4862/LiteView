@@ -1,0 +1,99 @@
+name: Windows CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      MINGW_BIN: C:\msys64\mingw64\bin
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust GNU toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install stable-x86_64-pc-windows-gnu --profile minimal --component rustfmt clippy --target x86_64-pc-windows-gnu
+          rustup default stable-x86_64-pc-windows-gnu
+          rustc -vV
+
+      - name: Install MinGW-w64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: mingw-w64-x86_64-gcc
+
+      - name: Add MinGW to PATH
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_PATH -Value $env:MINGW_BIN
+          & "$env:MINGW_BIN\gcc.exe" --version
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Validate PowerShell scripts
+        shell: pwsh
+        run: |
+          $scripts = Get-ChildItem -Path .\packaging -Filter *.ps1
+          foreach ($script in $scripts) {
+              $parseErrors = $null
+              [System.Management.Automation.Language.Parser]::ParseFile(
+                  $script.FullName,
+                  [ref]$null,
+                  [ref]$parseErrors
+              ) | Out-Null
+              if ($parseErrors.Count -gt 0) {
+                  throw "PowerShell parse failed for $($script.Name): $($parseErrors[0].Message)"
+              }
+          }
+
+      - name: Check formatting
+        shell: pwsh
+        run: cargo fmt --all -- --check
+
+      - name: Check Clippy
+        shell: pwsh
+        run: cargo clippy --all-targets --all-features --release -- -D warnings
+
+      - name: Run tests
+        shell: pwsh
+        run: cargo test --all-targets -j 1
+
+      - name: Build release package
+        shell: pwsh
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\packaging\build-release.ps1 -MinGWPath $env:MINGW_BIN
+
+      - name: Verify release package
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath .\dist\LiteView\liteview.exe -PathType Leaf)) {
+              throw 'dist\LiteView\liteview.exe was not created.'
+          }
+          if (-not (Test-Path -LiteralPath .\dist\LiteView-Setup.exe -PathType Leaf)) {
+              throw 'dist\LiteView-Setup.exe was not created.'
+          }
+
+      - name: Upload release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiteView-Windows-x64
+          path: |
+            dist\LiteView\
+            dist\LiteView-Setup.exe
+          if-no-files-found: error
