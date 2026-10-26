@@ -26,6 +26,7 @@ jobs:
         run: |
           rustup toolchain install stable-x86_64-pc-windows-gnu --profile minimal --component rustfmt clippy --target x86_64-pc-windows-gnu
           rustup default stable-x86_64-pc-windows-gnu
+          rustup component add rustfmt clippy
           rustc -vV
 
       - name: Install MinGW-w64
