@@ -180,18 +180,16 @@ fn run() -> Result<(), String> {
     let result = run_installer_script(&staging);
     let _ = fs::remove_dir_all(staging);
     result?;
-    show_message(
-        &format!(
-            "Installation complete.\nLiteView was installed at:\n{}",
-            installed_executable().display()
-        ),
-        true,
-    );
+    launch_installed_app();
     Ok(())
 }
 
+fn launch_installed_app() {
+    let _ = Command::new(installed_executable()).spawn();
+}
+
 #[cfg(windows)]
-fn show_message(message: &str, success: bool) {
+fn show_message(message: &str) {
     #[link(name = "user32")]
     unsafe extern "system" {
         fn MessageBoxW(
@@ -202,7 +200,6 @@ fn show_message(message: &str, success: bool) {
         ) -> i32;
     }
 
-    let icon = if success { 0x0000_0040 } else { 0x0000_0010 };
     let text = message
         .encode_utf16()
         .chain(std::iter::once(0))
@@ -211,15 +208,22 @@ fn show_message(message: &str, success: bool) {
         .encode_utf16()
         .chain(std::iter::once(0))
         .collect::<Vec<_>>();
-    unsafe { MessageBoxW(core::ptr::null_mut(), text.as_ptr(), caption.as_ptr(), icon) };
+    unsafe {
+        MessageBoxW(
+            core::ptr::null_mut(),
+            text.as_ptr(),
+            caption.as_ptr(),
+            0x0000_0010,
+        )
+    };
 }
 
 #[cfg(not(windows))]
-fn show_message(_message: &str, _success: bool) {}
+fn show_message(_message: &str) {}
 
 fn main() {
     if let Err(error) = run() {
-        show_message(&format!("Installation failed.\n\n{error}"), false);
+        show_message(&format!("Installation failed.\n\n{error}"));
     }
 }
 
